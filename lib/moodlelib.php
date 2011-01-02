@@ -7860,7 +7860,7 @@ function moodle_needs_upgrading() {
         return true;
     }
 
-    // main versio nfirst
+    // main version first
     $version = null;
     include($CFG->dirroot.'/version.php');  // defines $version and upgrades
     if ($version > $CFG->version) {
