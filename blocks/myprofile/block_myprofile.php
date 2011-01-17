@@ -71,7 +71,7 @@ class block_myprofile extends block_base {
         } else {
             $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);   // Course context
             // Make sure they can view the course
-            if (!is_viewing($coursecontext)) {
+            if ((!is_viewing($coursecontext)) && (!is_enrolled($coursecontext))) {
                 return '';
             }
         }
