@@ -21,6 +21,8 @@
 */
 define('SEARCH_INDEX_PATH', "{$CFG->dataroot}/search");
 define('SEARCH_DATABASE_TABLE', 'block_search_documents');
+define('SEARCH_TYPE_BOOK', 'book');
+define('PATH_FOR_SEARCH_TYPE_BOOK', 'mod/book');
 
 // get document types
 include "{$CFG->dirroot}/search/searchtypes.php";
