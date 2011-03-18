@@ -1,4 +1,4 @@
-<?PHP // $Id$
+<?PHP // $Id: error.php,v 1.26.2.25 2009/10/05 17:43:43 stronk7 Exp $
       // error.php - created with Moodle 1.7 beta + (2006101003)
 
 
@@ -16,6 +16,8 @@ $string['cannotinsertrecord'] = 'Could not insert new record ID $a';
 $string['cannotsavemd5file'] = 'Cannot save md5 file';
 $string['cannotsavezipfile'] = 'Cannot save ZIP file';
 $string['cannotunzipfile'] = 'Cannot unzip file';
+$string['cannotupdateapproval'] = 'Could not update approval status ($a->id = $a->rating)';
+$string['cannotupdaterating'] = 'Could not update an old rating ($a->id = $a->rating)';
 $string['cannotupdaterecord'] = 'Could not update record ID $a';
 $string['cannotviewprofile'] = 'You cannot view the profile of this user';
 $string['cantunenrollfrommetacourse'] = 'You cannot unenrol from this meta course';
@@ -82,6 +84,7 @@ $string['missingfield'] = 'Field \"$a\" is missing';
 $string['missingrequiredfield'] = 'A required field is missing';
 $string['modulemissingcode'] = 'Module $a is missing the code needed to perform this function';
 $string['modulerequirementsnotmet'] = 'Module \"$a->modulename\" ($a->moduleversion) could not be installed.  It requires a newer version of Moodle (currently you are using $a->currentmoodle, you need $a->requiremoodle).';
+$string['mustbeloggedin'] = 'You must be logged in to do this';
 $string['mustbeteacher'] = 'You must be a teacher to view this page';
 $string['nocategorydelete'] = 'Category \'$a\' cannot be deleted!';
 $string['nocontext'] = 'Sorry, but that course is not a valid context';

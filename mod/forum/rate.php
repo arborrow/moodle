@@ -1,4 +1,4 @@
-<?php // $Id$
+<?php // $Id: rate.php,v 1.24.2.5 2009/11/21 15:33:34 skodak Exp $
 
 //  Collect ratings, store them, then return to where we came from
 
@@ -29,7 +29,7 @@
         error("Guests are not allowed to rate entries.");
     }
 
-    if (!$forum->assessed) {
+    if ((!$forum->assessed) and (!$forum->approve)) {
         error("Rating of items not allowed!");
     }
 
@@ -37,17 +37,31 @@
     require_capability('mod/forum:rate', $context);
 
     if ($data = data_submitted() and confirm_sesskey()) {
-
+        
         $discussionid = false;
 
     /// Calculate scale values
         $scale_values = make_grades_menu($forum->scale);
-
+      
         foreach ((array)$data as $postid => $rating) {
+            $ratingpos = strpos($postid,'_rating');
+            $approvedpos = strpos($postid,'_approved');
+            $ratingval=-1;
+            $approvedval=-1;
+            
+            if ($ratingpos) {
+                $postid = substr($postid,0,$ratingpos);
+                $ratingval = $rating;
+            } 
+            if ($approvedpos) {
+                $postid = substr($postid,0,$approvedpos);
+                $approvedval = $rating;
+            }
+            
             if (!is_numeric($postid)) {
                 continue;
             }
-
+            
             // following query validates the submitted postid too
             $sql = "SELECT fp.*
                       FROM {$CFG->prefix}forum_posts fp, {$CFG->prefix}forum_discussions fd
@@ -67,38 +81,52 @@
             }
 
         /// Check rate is valid for for that forum scale values
-            if (!array_key_exists($rating, $scale_values) && $rating != FORUM_UNSET_POST_RATING) {
-                print_error('invalidrate', 'forum', '', $rating);
-            }
+            if ($ratingpos) {
+                if (!array_key_exists($rating, $scale_values) && $rating != FORUM_UNSET_POST_RATING) {
+                    print_error('invalidrate', 'forum', '', $rating);
+                }
+            
+                if ($rating == FORUM_UNSET_POST_RATING) {
+                    delete_records('forum_ratings', 'post', $postid, 'userid', $USER->id);
+                    forum_update_grades($forum, $post->userid);
 
-            if ($rating == FORUM_UNSET_POST_RATING) {
-                delete_records('forum_ratings', 'post', $postid, 'userid', $USER->id);
-                forum_update_grades($forum, $post->userid);
+                } else if ($oldrating = get_record('forum_ratings', 'userid', $USER->id, 'post', $post->id)) {
+                    if ($rating != $oldrating->rating) {
+                        $oldrating->rating = $rating;
+                        $oldrating->time   = time();
+                        if (! update_record('forum_ratings', $oldrating)) {
+                            error("Could not update an old rating ($post->id = $rating)");
+                        }
+                        forum_update_grades($forum, $post->userid);
+                    }
 
-            } else if ($oldrating = get_record('forum_ratings', 'userid', $USER->id, 'post', $post->id)) {
-                if ($rating != $oldrating->rating) {
-                    $oldrating->rating = $rating;
-                    $oldrating->time   = time();
-                    if (! update_record('forum_ratings', $oldrating)) {
-                        error("Could not update an old rating ($post->id = $rating)");
+                } else {
+                    $newrating = new object();
+                    $newrating->userid = $USER->id;
+                    $newrating->time   = time();
+                    $newrating->post   = $post->id;
+                    $newrating->rating = $rating;
+
+                    if (! insert_record('forum_ratings', $newrating)) {
+                        error("Could not insert a new rating ($postid = $rating)");
                     }
                     forum_update_grades($forum, $post->userid);
                 }
-
-            } else {
-                $newrating = new object();
-                $newrating->userid = $USER->id;
-                $newrating->time   = time();
-                $newrating->post   = $post->id;
-                $newrating->rating = $rating;
-
-                if (! insert_record('forum_ratings', $newrating)) {
-                    error("Could not insert a new rating ($postid = $rating)");
+            }
+            
+            if ($approvedpos) {
+            
+                if ($post->approved != $rating) {
+                    $post->approved = $rating;
+                    $strapproved = ($post->approved == 1) ? get_string('approve','forum') : get_string('unapprove','forum');
+                    $discussionurl = "discuss.php?d=$post->discussion#p$post->id&parent=$post->id"; 
+                    add_to_log($course->id, "forum", "update post approval", "$discussionurl", $strapproved, $cm->id); 
+                    update_record('forum_posts',addslashes_recursive($post));
                 }
-                forum_update_grades($forum, $post->userid);
             }
         }
-
+        
+       
         if ($forum->type == 'single' or !$discussionid) {
             redirect("$CFG->wwwroot/mod/forum/view.php?id=$cm->id", get_string('ratingssaved', 'forum'));
         } else {

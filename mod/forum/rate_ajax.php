@@ -1,4 +1,4 @@
-<?php // $Id$
+<?php // $Id: rate_ajax.php,v 1.1.2.3 2009/06/03 19:59:16 skodak Exp $
 
 ///////////////////////////////////////////////////////////////////////////
 //                                                                       //
@@ -59,6 +59,7 @@
 /// Check required params
     $postid = required_param('postid', PARAM_INT); // The postid to rate
     $rate   = required_param('rate', PARAM_INT); // The rate to apply
+    $ratetype = required_param('ratetype', PARAM_ALPHA); //either rating or approved
 
 /// Check postid is valid
     if (!$post = get_record_sql("SELECT p.*,
@@ -87,7 +88,7 @@
     }
 
 /// Check forum can be rated
-    if (!$forum->assessed) {
+    if (!$forum->assessed && (!$forum->approve)) {
         print_error('norate', 'forum');
     }
 
@@ -95,63 +96,69 @@
     $context = get_context_instance(CONTEXT_MODULE, $cm->id);
     require_capability('mod/forum:rate', $context);
 
-/// Check timed ratings
-    if ($forum->assesstimestart and $forum->assesstimefinish) {
-        if ($post->created < $forum->assesstimestart or $post->created > $forum->assesstimefinish) {
-            // we can not rate this, ignore it - this should not happen anyway unless teacher changes setting
-            print_error('norate', 'forum');
-        }
-    }
-
-/// Calculate scale values
-    $scale_values = make_grades_menu($forum->scale);
-
-/// Check rate is valid for for that forum scale values
-    if (!array_key_exists($rate, $scale_values) && $rate != FORUM_UNSET_POST_RATING) {
-        print_error('invalidrate', 'forum');
-    }
-
-/// Everything ready, process rate
-
-/// Deleting rate
-    if ($rate == FORUM_UNSET_POST_RATING) {
-        delete_records('forum_ratings', 'post', $postid, 'userid', $USER->id);
-
-/// Updating rate
-    } else if ($oldrating = get_record('forum_ratings', 'userid', $USER->id, 'post', $post->id)) {
-        if ($rate != $oldrating->rating) {
-            $oldrating->rating = $rate;
-            $oldrating->time   = time();
-            if (!update_record('forum_ratings', $oldrating)) {
-                error("Could not update an old rating ($post->id = $rate)");
+    if ($ratetype == 'rating') {
+    /// Check timed ratings
+        if ($forum->assesstimestart and $forum->assesstimefinish) {
+            if ($post->created < $forum->assesstimestart or $post->created > $forum->assesstimefinish) {
+                // we can not rate this, ignore it - this should not happen anyway unless teacher changes setting
+                print_error('norate', 'forum');
             }
         }
+    /// Calculate scale values
+        $scale_values = make_grades_menu($forum->scale);
 
-/// Inserting rate
-    } else {
-        $newrating = new object();
-        $newrating->userid = $USER->id;
-        $newrating->time   = time();
-        $newrating->post   = $post->id;
-        $newrating->rating = $rate;
+    /// Check rate is valid for for that forum scale values
+        if (!array_key_exists($rate, $scale_values) && $rate != FORUM_UNSET_POST_RATING) {
+            print_error('invalidrate', 'forum');
+        } //endif array_key_exists
 
-        if (!insert_record('forum_ratings', $newrating)) {
-            print_error('cannotinsertrate', 'error', '', (object)array('id'=>$postid, 'rating'=>$rate));
-        }
-    }
+    /// Everything ready, process rate
+        if ($rate == FORUM_UNSET_POST_RATING) { /// Deleting rate
+            delete_records('forum_ratings', 'post', $postid, 'userid', $USER->id);
+        } else if ($oldrating = get_record('forum_ratings', 'userid', $USER->id, 'post', $post->id) and ($ratetype =='rating')) { /// Updating rate
+            if ($rate != $oldrating->rating) {
+                $oldrating->rating = $rate;
+                $oldrating->time   = time();
+                if (!update_record('forum_ratings', $oldrating)) {
+                    error("Could not update an old rating ($post->id = $rate)");
+                } //endif !update_record
+            } //endif $oldrating
+ 
+    /// Inserting rate
+        } else {
+            if ($ratetype=='rating') {
+                $newrating = new object();
+                $newrating->userid = $USER->id;
+                $newrating->time   = time();
+                $newrating->post   = $post->id;
+                $newrating->rating = $rate;
 
-/// Update grades
+                if (!insert_record('forum_ratings', $newrating)) {
+                    print_error('cannotinsertrate', 'error', '', (object)array('id'=>$postid, 'rating'=>$rate));
+                } //endif
+            } //endif
+        } //endelse
     forum_update_grades($forum, $post->userid);
-
+    } //end rating
 /// Check user can see any rate
     $canviewanyrating = has_capability('mod/forum:viewanyrating', $context);
 
 /// Decide if rates info is displayed
     $rateinfo = '';
-    if ($canviewanyrating) {
-        $rateinfo = forum_print_ratings($postid, $scale_values, $forum->assessed, true, NULL, true);
-    }
+    if ($canviewanyrating && ($ratetype == 'rating')) {
+            $rateinfo = forum_print_ratings($postid, $scale_values, $forum->assessed, true, NULL, true);
+    } //endif
 
+    if (($post->approved != $rate) && ($ratetype =='approved')) { //if approval status has changed
+        $post->approved = $rate;
+        $strapproved = ($post->approved == 1) ? get_string('approve','forum') : get_string('unapprove','forum');
+        $discussionurl = "discuss.php?d=$post->discussion#p$post->id&parent=$post->id"; 
+        add_to_log($course->id, "forum", "update post approval", "$discussionurl", $strapproved, $cm->id); 
+        if (!update_record('forum_posts',addslashes_recursive($post))) {
+            print_error('cannotupdateapproval', 'error', '', (object)array('id'=>$post->id, 'rating'=>$rate));
+        }
+    }
+    
 /// Calculate response
     $response['status']  = 'Ok';
     $response['message'] = $rateinfo;

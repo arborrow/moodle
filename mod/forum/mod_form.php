@@ -41,6 +41,14 @@ class mod_forum_mod_form extends moodleform_mod {
         $mform->setHelpButton('forcesubscribe', array('subscription2', get_string('forcesubscribeq', 'forum'), 'forum'));
 
         $options = array();
+        $options[0] = get_string('no');
+        $options[1] = get_string('yes');
+        $mform->addElement('select', 'approve', get_string('requireapprovalq', 'forum'), $options);
+        $mform->setHelpButton('approve', array('approve', get_string('requireapprovalq', 'forum'), 'forum'));
+        $mform->setDefault('approve',0);
+        
+
+        $options = array();
         $options[FORUM_TRACKING_OPTIONAL] = get_string('trackingoptional', 'forum');
         $options[FORUM_TRACKING_OFF] = get_string('trackingoff', 'forum');
         $options[FORUM_TRACKING_ON] = get_string('trackingon', 'forum');

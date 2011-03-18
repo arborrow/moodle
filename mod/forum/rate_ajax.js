@@ -1,4 +1,4 @@
-// $Id$
+// $Id: rate_ajax.js,v 1.1.2.5 2009/04/06 03:44:13 arborrow Exp $
 
 ///////////////////////////////////////////////////////////////////////////
 //                                                                       //
@@ -83,7 +83,14 @@ function perform_rate(e, menu) {
     };
 
     /** Here goes the request **/
-    var url = rate_ajax_config.wwwroot +  '/mod/forum/rate_ajax.php?postid=' + menu.name + '&rate=' + menu.value + '&sesskey=' + rate_ajax_config.sesskey;
+    var ratinginfo = new Array();
+    var ratingname = menu.name;
+    ratinginfo = ratingname.split('_');
+    var ratingtype = ratinginfo[1];
+    var ratingid = ratinginfo[0];
+    if (menu.namestatus != 'Ok') {
+    }
+    var url = rate_ajax_config.wwwroot +  '/mod/forum/rate_ajax.php?postid=' + ratingid + '&rate=' + menu.value + '&ratetype=' + ratingtype + '&sesskey=' + rate_ajax_config.sesskey;
     YAHOO.util.Connect.asyncRequest('GET', url, callback, null);
 
     /** Start animation **/

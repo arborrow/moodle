@@ -1,4 +1,4 @@
-<?php  // $Id$
+<?php  // $Id: lib.php,v 1.609.2.103 2010/10/15 03:13:20 aparup Exp $
 
 require_once($CFG->libdir.'/filelib.php');
 
@@ -25,6 +25,41 @@ define ('FORUM_AGGREGATE_COUNT', 2);
 define ('FORUM_AGGREGATE_MAX', 3);
 define ('FORUM_AGGREGATE_MIN', 4);
 define ('FORUM_AGGREGATE_SUM', 5);
+
+/// check for installation of patch
+global $CFG;
+$cfg_forum = get_config('patch/forum');
+
+
+    if (!isset($cfg_forum->version) or (!$cfg_forum->version=2009032200)) { // the patch has not been installed, modify tables and create capability
+        $result = true;
+        require_once($CFG->libdir.'/xmldb/classes/XMLDBConstants.php');
+        require_once($CFG->libdir.'/xmldb/classes/XMLDBObject.class.php');
+        require_once($CFG->libdir.'/xmldb/classes/XMLDBTable.class.php');
+        require_once($CFG->libdir.'/xmldb/classes/XMLDBField.class.php');
+        require_once($CFG->libdir.'/ddllib.php'); // Install/upgrade related db functions
+        
+        $table  = new XMLDBTable('forum');
+        $field = new XMLDBField('approve');
+        $field->setAttributes(XMLDB_TYPE_INTEGER, 2, TRUE, TRUE, null, null, null, 0, 'blockperiod');
+        
+        $table2  = new XMLDBTable('forum_posts');
+        $field2 = new XMLDBField('approved');
+        $field2->setAttributes(XMLDB_TYPE_INTEGER, 2, TRUE, TRUE, null, null, null, 0,'mailnow');
+        
+        $result = $result && add_field($table, $field);
+        $result = $result && add_field($table2, $field2);
+        $result = $result && update_capabilities('mod/forum');
+        
+        if (!$result) { // if something goes wrong
+            error($result);
+            die;
+        } else {
+            set_config('version',2009032200,'patch/forum');
+            echo 'Forum patch tables successfully installed';
+        }
+    }
+
 
 /// STANDARD FUNCTIONS ///////////////////////////////////////////////////////////
 
@@ -61,7 +96,7 @@ function forum_add_instance($forum) {
         $discussion->name     = $forum->name;
         $discussion->intro    = $forum->intro;
         $discussion->assessed = $forum->assessed;
-        $discussion->format   = $forum->type;
+        $discussion->format =  ($forum->approve) ? $discussion->format   = -1 : $discussion->format   = $forum->type;
         $discussion->mailnow  = false;
         $discussion->groupid  = -1;
 
@@ -377,12 +412,6 @@ function forum_cron() {
                 }
                 if (!$userto->enrolledin[$course->id]) {
                     // oops - this user should not receive anything from this course
-                    continue;
-                }
-
-                // Don't send email if the forum is Q&A and the user has not posted
-                if ($forum->type == 'qanda' && !forum_get_user_posted_time($discussion->id, $userto->id)) {
-                    mtrace('Did not email '.$userto->id.' because user has not posted in discussion');
                     continue;
                 }
 
@@ -1897,6 +1926,19 @@ function forum_get_all_discussion_ratings($discussion) {
 }
 
 /**
+ * Returns a list of ratings for all posts in discussion
+ * @param object $discussion
+ * @return array of ratings or false
+ */
+function forum_get_all_discussion_approvals($discussion) {
+    global $CFG;
+    return get_records_sql("SELECT p.id, p.userid, p.approved
+                              FROM {$CFG->prefix}forum_posts p
+                             WHERE p.discussion = $discussion->id
+                             ORDER BY p.id ASC");
+}
+
+/**
  * Returns a list of ratings for one specific user for all posts in discussion
  * @global object $CFG
  * @param object $discussions the discussions for which we return all ratings
@@ -1952,6 +1994,7 @@ function forum_get_ratings($postid, $sort="u.firstname ASC") {
  * @param int $starttime - posts created after this time
  * @param int $endtime - posts created before this
  * @param int $now - used for timed discussions only
+ * added p.approved to WHERE clause so that unapproved posts will not be mailed out
  */
 function forum_get_unmailed_posts($starttime, $endtime, $now=null) {
     global $CFG;
@@ -1970,6 +2013,7 @@ function forum_get_unmailed_posts($starttime, $endtime, $now=null) {
                                    JOIN {$CFG->prefix}forum_discussions d ON d.id = p.discussion
                              WHERE p.mailed = 0
                                    AND p.created >= $starttime
+                                   AND p.approved = 1
                                    AND (p.created < $endtime OR p.mailnow = 1)
                                    $timedsql
                           ORDER BY p.modified ASC");
@@ -2363,7 +2407,7 @@ function forum_get_discussions($cm, $forumsort="d.timemodified DESC", $fullpost=
         $forumsort = "d.timemodified DESC";
     }
     if (empty($fullpost)) {
-        $postdata = "p.id,p.subject,p.modified,p.discussion,p.userid";
+        $postdata = "p.id,p.subject,p.modified,p.discussion,p.userid,p.approved";
     } else {
         $postdata = "p.*";
     }
@@ -2804,7 +2848,7 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
 
     global $USER, $CFG;
 
-    static $stredit, $strdelete, $strreply, $strparent, $strprune;
+    static $stredit, $strdelete, $strreply, $strparent, $strprune, $strapprove;
     static $strpruneheading, $displaymode;
     static $strmarkread, $strmarkunread;
 
@@ -2826,6 +2870,7 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         $cm->cache->caps['mod/forum:deleteownpost']    = has_capability('mod/forum:deleteownpost', $modcontext);
         $cm->cache->caps['mod/forum:deleteanypost']    = has_capability('mod/forum:deleteanypost', $modcontext);
         $cm->cache->caps['mod/forum:viewanyrating']    = has_capability('mod/forum:viewanyrating', $modcontext);
+        $cm->cache->caps['mod/forum:approvepost']    = has_capability('mod/forum:approvepost', $modcontext);
     }
 
     if (!isset($cm->uservisible)) {
@@ -2866,6 +2911,7 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         $stredit         = get_string('edit', 'forum');
         $strdelete       = get_string('delete', 'forum');
         $strreply        = get_string('reply', 'forum');
+        $strapprove      = get_string('approve','forum');
         $strparent       = get_string('parent', 'forum');
         $strpruneheading = get_string('pruneheading', 'forum');
         $strprune        = get_string('prune', 'forum');
@@ -2876,7 +2922,7 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     }
 
     $read_style = '';
-    // ignore trackign status if not tracked or tracked param missing
+    // ignore tracking status if not tracked or tracked param missing
     if ($istracked) {
         if (is_null($post_read)) {
             debugging('fetching post_read info');
@@ -3045,7 +3091,8 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     if ($reply) {
         $commands[] = '<a href="'.$CFG->wwwroot.'/mod/forum/post.php?reply='.$post->id.'">'.$strreply.'</a>';
     }
-
+    
+    
     echo '<div class="commands">';
     echo implode(' | ', $commands);
     echo '</div>';
@@ -3054,6 +3101,7 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
 // Ratings
 
     $ratingsmenuused = false;
+    $approvalmenuused = false;
     if (!empty($ratings) and isloggedin()) {
         echo '<div class="ratings">';
         $useratings = true;
@@ -3110,6 +3158,22 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         echo '</div>';
     }
 
+// Approval
+
+    
+    if (isloggedin()) {
+        echo '<div class="ratings">';
+        $mypost = ($USER->id == $post->userid);
+        $canapprove = $cm->cache->caps['mod/forum:approvepost'];
+        if ($canapprove && !$mypost && $forum->approve) { // if forum approvals and the user can approve and it is not their post
+                // echo '<span class="forumpostapprovaltext">' .
+                echo     forum_print_approval_menu($post->id, $post->userid, $post->approved);
+               //      '</span>';
+                     $approvalmenuused = true;
+            } 
+            echo '</div>'; 
+        }
+
 // Link to post if required
 
     if ($link) {
@@ -3133,7 +3197,7 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         forum_tp_mark_post_read($USER->id, $post, $forum->id);
     }
 
-    return $ratingsmenuused;
+    return ($ratingsmenuused or $approvalmenuused);
 }
 
 
@@ -3172,9 +3236,12 @@ function forum_print_discussion_header(&$post, $forum, $group=-1, $datestring=""
     } else {
         $rowcount = ($rowcount + 1) % 2;
     }
-
-    $post->subject = format_string($post->subject,true);
-
+    $usercansee = forum_user_can_see_post($forum, $post->discussion, $post);
+    if ($post->approved || $usercansee) {
+        $post->subject = format_string($post->subject,true);
+    } else {
+        $post->subject = get_string('forumsubjecthidden','forum');
+    }
     echo "\n\n";
     echo '<tr class="discussion r'.$rowcount.'">';
 
@@ -3191,15 +3258,23 @@ function forum_print_discussion_header(&$post, $forum, $group=-1, $datestring=""
     $postuser->imagealt = $post->imagealt;
     $postuser->picture = $post->picture;
 
-    echo '<td class="picture">';
-    print_user_picture($postuser, $forum->course);
-    echo "</td>\n";
-
-    // User name
-    $fullname = fullname($post, has_capability('moodle/site:viewfullnames', $modcontext));
-    echo '<td class="author">';
-    echo '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$post->userid.'&amp;course='.$forum->course.'">'.$fullname.'</a>';
-    echo "</td>\n";
+    if ($post->approved || $usercansee) {
+        echo '<td class="picture">';
+        print_user_picture($postuser, $forum->course);
+        echo "</td>\n";
+        // User name
+        $fullname = fullname($post, has_capability('moodle/site:viewfullnames', $modcontext));
+        echo '<td class="author">';
+        echo '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$post->userid.'&amp;course='.$forum->course.'">'.$fullname.'</a>';
+        echo "</td>\n";
+    } else {
+        echo '<td class="picture">';
+        echo "</td>\n";
+        echo '<td class="author">';
+        print_string('forumauthorhidden','forum');
+        echo "</td>\n";
+        
+    }
 
     // Group picture
     if ($group !== -1) {  // Groups are active - group is a group data object or NULL
@@ -3255,10 +3330,14 @@ function forum_print_discussion_header(&$post, $forum, $group=-1, $datestring=""
     $usermodified->id        = $post->usermodified;
     $usermodified->firstname = $post->umfirstname;
     $usermodified->lastname  = $post->umlastname;
+    if ($post->approved || $usercansee) {
     echo '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$post->usermodified.'&amp;course='.$forum->course.'">'.
          fullname($usermodified).'</a><br />';
     echo '<a href="'.$CFG->wwwroot.'/mod/forum/discuss.php?d='.$post->discussion.$parenturl.'">'.
           userdate($usedate, $datestring).'</a>';
+    } else {
+        echo  print_string('forumauthorhidden','forum');
+    }
     echo "</td>\n";
 
     echo "</tr>\n\n";
@@ -3629,6 +3708,22 @@ function forum_get_ratings_summary($postid, $scale, $ratings=NULL) {
 }
 
 /**
+ * Print the menu of approval options 
+ * If the post has already been - set that value.
+ */
+function forum_print_approval_menu($postid, $userid, $approved) {
+
+    static $strapprove;
+    if (empty($strapprove)) {
+        $strapprove = get_string('approve', 'forum');
+    }
+    $options[0] = get_string('unapprove','forum');
+    $options[1] = get_string('approve','forum');
+    choose_from_menu($options, $postid.'_approved', $approved, '', '', $approved, false, false, 0, '', false, false, 'forumpostratingmenu');
+}
+
+
+/**
  * Print the menu of ratings as part of a larger form.
  * If the post has already been - set that value.
  * Scale is an array of ratings
@@ -3649,7 +3744,7 @@ function forum_print_rating_menu($postid, $userid, $scale, $myrating=NULL) {
         $strrate = get_string("rate", "forum");
     }
     $scale = array(FORUM_UNSET_POST_RATING => $strrate.'...') + $scale;
-    choose_from_menu($scale, $postid, $myrating, '', '', '0', false, false, 0, '', false, false, 'forumpostratingmenu');
+    choose_from_menu($scale, $postid.'_rating', $myrating, '', '', '0', false, false, 0, '', false, false, 'forumpostratingmenu');
 }
 
 /**
@@ -3951,8 +4046,13 @@ function forum_update_post($post,&$message) {
     global $USER, $CFG;
 
     $forum = get_record('forum', 'id', $post->forum);
-
+    if (!$cm = get_coursemodule_from_instance("forum", $forum->id, $forum->course)) {
+            error('Could not get the course module for the forum instance.');
+        }
+    $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
+    
     $post->modified = time();
+    $post->approved = forum_post_approved($forum);
 
     $updatediscussion = new object();
     $updatediscussion->id           = $post->discussion;
@@ -4011,7 +4111,10 @@ function forum_add_discussion($discussion,&$message) {
     $post->course      = $forum->course; // speedup
     $post->format      = $discussion->format;
     $post->mailnow     = $discussion->mailnow;
+    $post_approved = forum_post_approved($forum);
+    $post->approved = $post_approved;
 
+    
     if (! $post->id = insert_record("forum_posts", $post) ) {
         return 0;
     }
@@ -4305,7 +4408,6 @@ function forum_get_subscribe_link($forum, $context, $messages = array(), $cantac
             $backtoindexlink = '';
         }
         $link = '';
-        $sesskeylink = '&amp;sesskey='.sesskey();
 
         if ($fakelink) {
             $link .= <<<EOD
@@ -4313,15 +4415,14 @@ function forum_get_subscribe_link($forum, $context, $messages = array(), $cantac
 //<![CDATA[
 var subs_link = document.getElementById("subscriptionlink");
 if(subs_link){
-    subs_link.innerHTML = "<a title=\"$linktitle\" href='$CFG->wwwroot/mod/forum/subscribe.php?id={$forum->id}{$backtoindexlink}{$sesskeylink}'>$linktext<\/a>";
+    subs_link.innerHTML = "<a title=\"$linktitle\" href='$CFG->wwwroot/mod/forum/subscribe.php?id={$forum->id}{$backtoindexlink}'>$linktext<\/a>";
 }
 //]]>
 </script>
 <noscript>
 EOD;
         }
-        $options['id'] = $forum->id;
-        $options['sesskey'] = sesskey();
+        $options ['id'] = $forum->id;
         $link .= print_single_button($CFG->wwwroot . '/mod/forum/subscribe.php',
                 $options, $linktext, 'post', '_self', true, $linktitle);
         if ($fakelink) {
@@ -4642,7 +4743,7 @@ function forum_user_can_see_discussion($forum, $discussion, $context, $user=NULL
  *
  */
 function forum_user_can_see_post($forum, $discussion, $post, $user=NULL, $cm=NULL) {
-    global $CFG, $USER;
+    global $USER;
 
     // retrieve objects (yuk)
     if (is_numeric($forum)) {
@@ -4689,6 +4790,24 @@ function forum_user_can_see_post($forum, $discussion, $post, $user=NULL, $cm=NUL
             return false;
         }
     }
+    
+    if  ($post->userid<>$user->id) {
+        if (isset($cm->cache->caps['mod/forum:approvepost'])) {
+            if (!$cm->cache->caps['mod/forum:approvepost']) {
+                    if ($post->approved==0) {
+                        return false;
+                    }
+                }
+            } else {
+            $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
+            if (!has_capability('mod/forum:approvepost', $modcontext, $user->id)) { 
+                if ($post->approved==0) {
+                    return false;
+                }
+            }
+        }
+    }
+
 
     if (isset($cm->uservisible)) {
         if (!$cm->uservisible) {
@@ -4703,10 +4822,9 @@ function forum_user_can_see_post($forum, $discussion, $post, $user=NULL, $cm=NUL
     if ($forum->type == 'qanda') {
         $firstpost = forum_get_firstpost_from_discussion($discussion->id);
         $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
-        $userfirstpost = forum_get_user_posted_time($discussion->id, $user->id);
 
-        return (($userfirstpost !== false && (time() - $userfirstpost >= $CFG->maxeditingtime)) ||
-                $firstpost->id == $post->id || $post->userid == $user->id || $firstpost->userid == $user->id ||
+        return (forum_user_has_posted($forum->id,$discussion->id,$user->id) ||
+                $firstpost->id == $post->id ||
                 has_capability('mod/forum:viewqandawithoutposting', $modcontext, $user->id, false));
     }
     return true;
@@ -4951,7 +5069,6 @@ function forum_print_latest_discussions($course, $forum, $maxdiscussions=-1, $di
                 }
 
                 $discussion->forum = $forum->id;
-
                 forum_print_post($discussion, $discussion, $forum, $cm, $course, $ownpost, 0, $link, false);
             break;
         }
@@ -5034,40 +5151,51 @@ function forum_print_discussion($course, $cm, $forum, $discussion, $post, $mode,
     $ratings = NULL;
     $ratingsmenuused = false;
     $ratingsformused = false;
-    if ($forum->assessed and isloggedin()) {
-        if ($scale = make_grades_menu($forum->scale)) {
-            $ratings =new object();
-            $ratings->scale = $scale;
-            $ratings->assesstimestart = $forum->assesstimestart;
-            $ratings->assesstimefinish = $forum->assesstimefinish;
-            $ratings->allow = $canrate;
+    if (($forum->assessed or $forum->approve) and isloggedin()) {
+        if ($forum->assessed) {
+            if ($scale = make_grades_menu($forum->scale)) {
+                $ratings =new object();
+                $ratings->scale = $scale;
+                $ratings->assesstimestart = $forum->assesstimestart;
+                $ratings->assesstimefinish = $forum->assesstimefinish;
+                $ratings->allow = $canrate;
 
-            if ($ratings->allow) {
-                echo '<form id="form" method="post" action="rate.php">';
-                echo '<div class="ratingform">';
-                echo '<input type="hidden" name="forumid" value="'.$forum->id.'" />';
-                echo '<input type="hidden" name="sesskey" value="'.sesskey().'" />';
-                $ratingsformused = true;
-            }
+                // preload all ratings - one query only and minimal memory
+                $cm->cache->ratings = array();
+                $cm->cache->myratings = array();
+                if ($postratings = forum_get_all_discussion_ratings($discussion)) {
+                    foreach ($postratings as $pr) {
+                        if (!isset($cm->cache->ratings[$pr->postid])) {
+                            $cm->cache->ratings[$pr->postid] = array();
+                        } //end !isset
+                        $cm->cache->ratings[$pr->postid][$pr->id] = $pr->rating;
+                        if ($pr->userid == $USER->id) {
+                            $cm->cache->myratings[$pr->postid] = $pr->rating;
+                        } //end $pr->userid
+                    } //end foreach $postratings
+                    unset($postratings);
+                } //endif $postratings
 
-            // preload all ratings - one query only and minimal memory
-            $cm->cache->ratings = array();
-            $cm->cache->myratings = array();
-            if ($postratings = forum_get_all_discussion_ratings($discussion)) {
-                foreach ($postratings as $pr) {
-                    if (!isset($cm->cache->ratings[$pr->postid])) {
-                        $cm->cache->ratings[$pr->postid] = array();
-                    }
-                    $cm->cache->ratings[$pr->postid][$pr->id] = $pr->rating;
-                    if ($pr->userid == $USER->id) {
-                        $cm->cache->myratings[$pr->postid] = $pr->rating;
-                    }
-                }
-                unset($postratings);
-            }
-        }
-
-    }
+                // preload all approvals - not sure this really gets used but for starters I'll include it -ab
+                if ($postapprovals = forum_get_all_discussion_approvals($discussion)) { //get all approvals for discussion
+                    foreach ($postapprovals as $pa) {
+                        if (!isset($cm->cache->approved[$pa->id])) {
+                            $cm->cache->approved[$pa->id] = array();
+                        } //endif !isset
+                        $cm->cache->approved[$pa->id] = $pa->approved;
+                    } //end foreach $postapprovals
+                    unset($postapprovals);
+                } //endif $postapprovals
+            } //endif $scale
+        } //endif $forum->assessed
+        if ($forum->approve or $ratings->allow ) {
+            echo '<form id="form" method="post" action="rate.php">';
+            echo '<div class="ratingform">';
+            echo '<input type="hidden" name="forumid" value="'.$forum->id.'" />';
+            echo '<input type="hidden" name="sesskey" value="'.sesskey().'" />';
+            $ratingsformused = true;
+        } //endif $forum->approve
+    } //endif $forum->assessed
 
     $post->forum = $forum->id;   // Add the forum id to the post object, later used by forum_print_post
     $post->forumtype = $forum->type;
@@ -5103,10 +5231,13 @@ function forum_print_discussion($course, $cm, $forum, $discussion, $post, $mode,
             break;
     }
 
-    if ($ratingsformused) {
-        if ($ratingsmenuused) {
+            
+    if (($ratingsformused) or ($forum->approve)) { //if ratings and approve
+        if ($ratingsmenuused)  {
             echo '<div class="ratingsubmit">';
             echo '<input type="submit" id="forumpostratingsubmit" value="'.get_string('sendinratings', 'forum').'" />';
+            
+            
             if (ajaxenabled() && !empty($CFG->forum_ajaxrating)) { /// AJAX enabled, standard submission form
                 $rate_ajax_config_settings = array("pixpath"=>$CFG->pixpath, "wwwroot"=>$CFG->wwwroot, "sesskey"=>sesskey());
                 echo "<script type=\"text/javascript\">//<![CDATA[\n".
@@ -5121,7 +5252,6 @@ function forum_print_discussion($course, $cm, $forum, $discussion, $post, $mode,
             }
             echo '</div>';
         }
-
         echo '</div>';
         echo '</form>';
     }
@@ -6405,7 +6535,7 @@ function forum_get_view_actions() {
  *
  */
 function forum_get_post_actions() {
-    return array('add discussion','add post','delete discussion','delete post','move discussion','prune post','update post');
+    return array('add discussion','add post','delete discussion','delete post','move discussion','prune post','update post','approve post');
 }
 
 /**
@@ -6945,20 +7075,28 @@ function forum_get_extra_capabilities() {
 }
 
 /**
- * Returns creation time of the first user's post in given discussion
- * @global object $DB
- * @param int $did Discussion id
- * @param int $userid User id
- * @return int|bool post creation time stamp or return false
+ * Returns true if the post is approved by default (i.e. forum approval not required or the user has the capability to approve posts)
+ * @param $forum        - a forum object with the same attributes as a record from the forum database table
+ * @return boolean      - is the forum post approved
  */
-function forum_get_user_posted_time($did, $userid) {
-    global $CFG;
+function forum_post_approved($forum) {
 
-    $posttime = get_field('forum_posts', 'MIN(created)', 'userid', $userid, 'discussion', $did);
-    if (empty($posttime)) {
-        return false;
-    }
-    return $posttime;
+        if (! $cm = get_coursemodule_from_instance("forum", $forum->id, $forum->course)) {
+            error("Unable to get course module instance");
+        }
+        if (!$modcontext = get_context_instance(CONTEXT_MODULE, $cm->id)) {
+            error("Unable to get course module context");
+        }
+        $canapprove = has_capability('mod/forum:approvepost',$modcontext);
+
+    if ($forum->approve) { // if the forum requires approval
+                return $canapprove;
+            } else { // if the forum does not require approval then the post is automatically approved
+                return 1;
+            }
 }
 
+function forum_approve_post($post) {
+    
+}
 ?>

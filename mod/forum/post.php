@@ -1,4 +1,4 @@
-<?php // $Id$
+<?php // $Id: post.php,v 1.154.2.20 2010/10/01 02:33:18 rwijaya Exp $
 
 //  Edit and save a new post to a discussion
 
@@ -7,6 +7,7 @@
 
     $reply   = optional_param('reply', 0, PARAM_INT);
     $forum   = optional_param('forum', 0, PARAM_INT);
+    $approve = optional_param('approve', 0, PARAM_INT);
     $edit    = optional_param('edit', 0, PARAM_INT);
     $delete  = optional_param('delete', 0, PARAM_INT);
     $prune   = optional_param('prune', 0, PARAM_INT);
@@ -16,7 +17,7 @@
 
 
     //these page_params will be passed as hidden variables later in the form.
-    $page_params = array('reply'=>$reply, 'forum'=>$forum, 'edit'=>$edit);
+    $page_params = array('reply'=>$reply, 'forum'=>$forum, 'edit'=>$edit, 'approve'=>$approve);
 
     $sitecontext = get_context_instance(CONTEXT_SYSTEM);
 
@@ -77,8 +78,11 @@
         if (! $cm = get_coursemodule_from_instance("forum", $forum->id, $course->id)) {
             error("Incorrect course module");
         }
-
+        if (!$modcontext = get_context_instance(CONTEXT_MODULE, $cm->id)) {
+            error("Unable to get course module context");
+        }
         $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
+        $canapprove = forum_post_approved($forum);
 
         if (! forum_user_can_post_discussion($forum, $groupid, -1, $cm)) {
             if (has_capability('moodle/legacy:guest', $coursecontext, NULL, false)) {  // User is a guest here!
@@ -137,12 +141,15 @@
         if (! $cm = get_coursemodule_from_instance("forum", $forum->id, $course->id)) {
             error("Incorrect cm");
         }
+        if (!$modcontext = get_context_instance(CONTEXT_MODULE, $cm->id)) {
+            error("Unable to get course module context");
+        }
+        $canapprove = forum_post_approved($forum);
 
         // call course_setup to use forced language, MDL-6926
         course_setup($course->id);
 
         $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
-        $modcontext    = get_context_instance(CONTEXT_MODULE, $cm->id);
 
         if (! forum_user_can_post($forum, $discussion, $USER, $cm, $course, $modcontext)) {
             if (has_capability('moodle/legacy:guest', $coursecontext, NULL, false)) {  // User is a guest here!
@@ -433,7 +440,32 @@
         }
         print_footer($course);
         die;
-    } else {
+    } 
+    else if (!empty($approve)) {  // User is approving a post - this is not yet working
+
+        if (! $post = forum_get_post_full($approve)) {
+            error("Post ID was incorrect");
+        }
+        if (! $discussion = get_record("forum_discussions", "id", $post->discussion)) {
+            error("This post is not part of a discussion! ($edit)");
+        }
+        if (! $forum = get_record("forum", "id", $discussion->forum)) {
+            error("The forum number was incorrect ($discussion->forum)");
+        }
+        if (! $course = get_record("course", "id", $discussion->course)) {
+            error("The course number was incorrect ($discussion->course)");
+        }
+        if (!$cm = get_coursemodule_from_instance("forum", $forum->id, $course->id)) {
+            error('Could not get the course module for the forum instance.');
+        } else {
+            $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
+        }
+        if (has_capability('mod/forum:approvepost', $modcontext)) {
+            $post->approve = 1;
+        }
+        // update_record('forum_posts',$post);        
+    }    
+    else {
         error("No operation specified");
 
     }
@@ -538,6 +570,8 @@
             $message = '';
             $addpost=$fromform;
             $addpost->forum=$forum->id;
+            $addpost->approved = forum_post_approved($forum);
+ 
             if ($fromform->id = forum_add_new_post($addpost, $message)) {
 
                 $timemessage = 2;
@@ -729,7 +763,7 @@
         }
     }
 
-    if ($USER->id != $post->userid) {   // Not the original author, so add a message to the end
+    if (($USER->id != $post->userid) and (!$approve)){   // Not the original author, so add a message to the end
         $data->date = userdate($post->modified);
         if ($post->format == FORMAT_HTML) {
             $data->name = '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$USER->id.'&course='.$post->course.'">'.
