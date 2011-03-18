@@ -1,0 +1,22 @@
+This file serves as a README.txt file for the Forum Approve Posts patch contributed by Anthony Borrow (anthony@moodle.org).
+
+DESCRIPTION - The Forum Approve Posts patch is designed to enable the ability for a teacher or other user with the mod/forum:approvepost capability to approve posts before they are visible to other users or emailed to subscribers. 
+
+USAGE 
+
+1) When creating the forum, the teacher indicates that the forum will require approval.
+2) The teacher then reviews the forums and clicks on the Approve link to approve individual posts.
+
+INSTALLATION
+
+1) Apply the patch file to your Moodle installation (see http://docs.moodle.org/en/Development:How_to_apply_a_patch)
+2) Login as the system adminstrator and go to any page that requires the /mod/forum/lib.php file
+3) The modified /mod/forum/lib.php file will check to see if the patch has been installed and if not it will begin to add the approve field to the forum table and the approved field to the forum_post table and create the mod/forum:approvepost capability. After installation, a message indicating that the patch has been successfully installed will be displayed.
+
+TODO
+
+This patch is currently being developed in response to http://tracker.moodle.org/browse/CONTRIB-1085. Please create new issues in the tracker for any suggestions, bug reports, improvements, etc. 
+
+KNOWN ISSUES
+
+For a listing of current issues with the patch please see: http://tracker.moodle.org/browse/CONTRIB/component/10440
