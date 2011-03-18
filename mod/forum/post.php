@@ -29,6 +29,7 @@ require_once($CFG->libdir.'/completionlib.php');
 
 $reply   = optional_param('reply', 0, PARAM_INT);
 $forum   = optional_param('forum', 0, PARAM_INT);
+$approve = optional_param('approve', 0, PARAM_INT);
 $edit    = optional_param('edit', 0, PARAM_INT);
 $delete  = optional_param('delete', 0, PARAM_INT);
 $prune   = optional_param('prune', 0, PARAM_INT);
@@ -40,6 +41,7 @@ $PAGE->set_url('/mod/forum/post.php', array(
         'reply' => $reply,
         'forum' => $forum,
         'edit'  => $edit,
+        'approve' => $approve,
         'delete'=> $delete,
         'prune' => $prune,
         'name'  => $name,
@@ -47,7 +49,7 @@ $PAGE->set_url('/mod/forum/post.php', array(
         'groupid'=>$groupid,
         ));
 //these page_params will be passed as hidden variables later in the form.
-$page_params = array('reply'=>$reply, 'forum'=>$forum, 'edit'=>$edit);
+$page_params = array('reply'=>$reply, 'forum'=>$forum, 'edit'=>$edit, 'approve'=>$approve);
 
 $sitecontext = get_context_instance(CONTEXT_SYSTEM);
 
@@ -76,12 +78,12 @@ if (!isloggedin() or isguestuser()) {
     if (! $course = $DB->get_record('course', array('id' => $forum->course))) {
         print_error('invalidcourseid');
     }
-
     if (!$cm = get_coursemodule_from_instance('forum', $forum->id, $course->id)) { // For the logs
         print_error('invalidcoursemodule');
     } else {
         $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
     }
+    $canapprove = forum_post_approved($forum);
 
     $PAGE->set_cm($cm, $course, $forum);
     $PAGE->set_context($modcontext);
@@ -177,7 +179,7 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
 
     $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
     $modcontext    = get_context_instance(CONTEXT_MODULE, $cm->id);
-
+    $canapprove = forum_post_approved($forum);
     if (! forum_user_can_post($forum, $discussion, $USER, $cm, $course, $modcontext)) {
         if (!isguestuser()) {
             if (!is_enrolled($coursecontext)) {  // User is a guest here!
@@ -475,9 +477,30 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
     }
     echo $OUTPUT->footer();
     die;
+} else if (!empty($approve)) {  // User is approving a post - this is not yet working
+    if (! $post = forum_get_post_full($approve)) {
+        print_error('invalidpostid', 'forum');
+    }
+    if (! $discussion = get_record("forum_discussions", "id", $post->discussion)) {
+        print_error('notpartofdiscussion', 'forum');
+    }
+    if (! $forum = get_record("forum", "id", $discussion->forum)) {
+        print_error('invalidforumid', 'forum');
+    }
+    if (! $course = get_record("course", "id", $discussion->course)) {
+        print_error('invalidcourseid');
+    }
+    if (!$cm = get_coursemodule_from_instance("forum", $forum->id, $course->id)) {
+        print_error('invalidcoursemodule');
+    } else {
+        $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
+    }
+    if (has_capability('mod/forum:approvepost', $modcontext)) {
+        $post->approve = 1;
+    }
 } else {
+//} else {
     print_error('unknowaction');
-
 }
 
 if (!isset($coursecontext)) {
@@ -512,7 +535,7 @@ file_prepare_draft_area($draftitemid, $modcontext->id, 'mod_forum', 'attachment'
 
 //load data into form NOW!
 
-if ($USER->id != $post->userid) {   // Not the original author, so add a message to the end
+if ($USER->id != $post->userid && (!$approve)) {   // Not the original author, so add a message to the end
     $data->date = userdate($post->modified);
     if ($post->messageformat == FORMAT_HTML) {
         $data->name = '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$USER->id.'&course='.$post->course.'">'.
@@ -662,6 +685,7 @@ if ($fromform = $mform_post->get_data()) {
         $message = '';
         $addpost = $fromform;
         $addpost->forum=$forum->id;
+        $addpost->approved = forum_post_approved($forum);
         if ($fromform->id = forum_add_new_post($addpost, $mform_post, $message)) {
 
             $timemessage = 2;
