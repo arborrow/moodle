@@ -1262,8 +1262,8 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
                                '&amp;course='.$data->course.'">'.fullname($record).'</a>';
 
         $patterns[]='##userpicture##';
-//        $replacement[] = print_user_picture($record->userid, $cm->course, get_field('user','picture','id',$record->userid), false, true);
-        $replacement[] = $OUTPUT->user_picture($record->userid, array(\'courseid\'=>$cm->course).');
+        $ruser = $DB->get_record("user",array("id" => $record->userid));
+        $replacement[] = $OUTPUT->user_picture($ruser);
 
         $patterns[]='##export##';
 
