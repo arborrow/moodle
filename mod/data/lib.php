@@ -1261,6 +1261,10 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
         $replacement[] = '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$record->userid.
                                '&amp;course='.$data->course.'">'.fullname($record).'</a>';
 
+        $patterns[]='##userpicture##';
+//        $replacement[] = print_user_picture($record->userid, $cm->course, get_field('user','picture','id',$record->userid), false, true);
+        $replacement[] = $OUTPUT->user_picture($record->userid, array(\'courseid\'=>$cm->course).');
+
         $patterns[]='##export##';
 
         if ($CFG->enableportfolios && ($template == 'singletemplate' || $template == 'listtemplate')
