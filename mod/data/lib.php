@@ -1263,7 +1263,7 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
 
         $patterns[]='##userpicture##';
         $ruser = $DB->get_record("user",array("id" => $record->userid));
-        $replacement[] = $OUTPUT->user_picture($ruser);
+        $replacement[] = $OUTPUT->user_picture($ruser,array("courseid" => $cm->id));
 
         $patterns[]='##export##';
 
