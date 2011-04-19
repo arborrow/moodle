@@ -3335,8 +3335,13 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     $by = new stdClass();
     $by->name = html_writer::link($postuser->profilelink, $postuser->fullname);
     $by->date = userdate($post->modified);
-    $output .= html_writer::tag('div', get_string('bynameondate', 'forum', $by), array('class'=>'author'));
 
+    $output .= html_writer::tag('div', get_string('bynameondate', 'forum', $by), array('class'=>'author'));
+    $options = new stdClass;
+    $options->para    = false;
+    $options->trusted = $post->messagetrust;
+    $options->context = $modcontext;
+    $output .= html_writer::tag('span', '('.get_string('numwords',      'moodle', count_words(strip_tags($post->message))).')...', array('class'=>     'post-word-count')); 
     $output .= html_writer::end_tag('div'); //topic
     $output .= html_writer::end_tag('div'); //row
 
@@ -3359,10 +3364,6 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         $output .= html_writer::tag('div', $attachments, array('class'=>'attachments'));
     }
 
-    $options = new stdClass;
-    $options->para    = false;
-    $options->trusted = $post->messagetrust;
-    $options->context = $modcontext;
     if ($shortenpost) {
         // Prepare shortened version
         $postclass    = 'shortenedpost';
