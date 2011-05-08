@@ -318,7 +318,10 @@ function lesson_grade($lesson, $ntries, $userid = 0) {
                 $attempt = end($attempts);
                 // If essay question, handle it, otherwise add to score
                 if ($page->requires_manual_grading()) {
-                    $earned += $page->earned_score($answers, $attempt);
+                    $useranswerobj = unserialize($attempt->useranswer);
+                    if (isset($useranswerobj->score)) {
+                        $earned += $useranswerobj->score;
+                    }
                     $nmanual++;
                     $manualpoints += $answers[$attempt->answerid]->score;
                 } else if (!empty($attempt->answerid)) {
@@ -2030,7 +2033,7 @@ abstract class lesson_page extends lesson_base {
                     $result->feedback = $OUTPUT->box(format_text($this->get_contents(), $this->properties->contentsformat, $options), 'generalbox boxaligncenter');
                     $result->feedback .= '<div class="correctanswer generalbox"><em>'.get_string("youranswer", "lesson").'</em> : '.$result->studentanswer; // already in clean html
                     $result->feedback .= $OUTPUT->box($result->response, $class); // already conerted to HTML
-                    echo "</div>";
+                    $result->feedback .= '</div>';
                 }
             }
         }

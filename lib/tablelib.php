@@ -593,6 +593,18 @@ class flexible_table {
             return array();
         }
 
+        foreach ($this->sess->sortby as $column => $notused) {
+            if (isset($this->columns[$column])) {
+                continue; // This column is OK.
+            }
+            if (in_array($column, array('firstname', 'lastname')) &&
+                    isset($this->columns['fullname'])) {
+                continue; // This column is OK.
+            }
+            // This column is not OK.
+            unset($this->sess->sortby[$column]);
+        }
+
         return $this->sess->sortby;
     }
 
@@ -617,7 +629,7 @@ class flexible_table {
     }
 
     /**
-     * @return array - sql where, params array
+     * @return string sql to add to where statement.
      */
     function get_sql_where() {
         global $DB;
@@ -1278,11 +1290,21 @@ class table_sql extends flexible_table{
         if ($this->rawdata){
             foreach($this->rawdata as $row){
                 $formattedrow = $this->format_row($row);
-                $this->add_data_keyed($formattedrow);
+                $this->add_data_keyed($formattedrow,
+                        $this->get_row_class($row));
             }
         }
     }
 
+
+    /**
+     * Get any extra classes names to add to this row in the HTML.
+     * @param $row array the data for this row.
+     * @return string added to the class="" attribute of the tr.
+     */
+    function get_row_class($row) {
+        return '';
+    }
 
     /**
      * This is only needed if you want to use different sql to count rows.
@@ -1324,10 +1346,11 @@ class table_sql extends flexible_table{
         if (!$this->is_downloading()) {
             if ($this->countsql === NULL){
                 $this->countsql = 'SELECT COUNT(1) FROM '.$this->sql->from.' WHERE '.$this->sql->where;
+                $this->countparams = $this->sql->params;
             }
+            $grandtotal = $DB->count_records_sql($this->countsql, $this->countparams);
             if ($useinitialsbar && !$this->is_downloading()) {
-                $totalinitials = $DB->count_records_sql($this->countsql, $this->countparams);
-                $this->initialbars($totalinitials>$pagesize);
+                $this->initialbars($grandtotal > $pagesize);
             }
 
             list($wsql, $wparams) = $this->get_sql_where();
@@ -1340,7 +1363,7 @@ class table_sql extends flexible_table{
 
                 $total  = $DB->count_records_sql($this->countsql, $this->countparams);
             } else {
-                $total = $totalinitials;
+                $total = $grandtotal;
             }
 
             $this->pagesize($pagesize, $total);
@@ -1348,8 +1371,15 @@ class table_sql extends flexible_table{
 
         // Fetch the attempts
         $sort = $this->get_sql_sort();
-        $sort = $sort?" ORDER BY {$sort}":'';
-        $sql = "SELECT {$this->sql->fields} FROM {$this->sql->from} WHERE {$this->sql->where}{$sort}";
+        if ($sort) {
+            $sort = "ORDER BY $sort";
+        }
+        $sql = "SELECT
+                {$this->sql->fields}
+                FROM {$this->sql->from}
+                WHERE {$this->sql->where}
+                {$sort}";
+
         if (!$this->is_downloading()) {
             $this->rawdata = $DB->get_records_sql($sql, $this->sql->params, $this->get_page_start(), $this->get_page_size());
         } else {

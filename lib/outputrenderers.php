@@ -1124,7 +1124,11 @@ class core_renderer extends renderer_base {
         $output = html_writer::tag('div', $output);
 
         // now the form itself around it
-        $url = $button->url->out_omit_querystring(); // url without params
+        if ($button->method === 'get') {
+            $url = $button->url->out_omit_querystring(true); // url without params, the anchor part allowed
+        } else {
+            $url = $button->url->out_omit_querystring();     // url without params, the anchor part not allowed
+        }
         if ($url === '') {
             $url = '#'; // there has to be always some action
         }
@@ -1210,8 +1214,13 @@ class core_renderer extends renderer_base {
         $output = html_writer::tag('div', $output);
 
         // now the form itself around it
+        if ($select->method === 'get') {
+            $url = $select->url->out_omit_querystring(true); // url without params, the anchor part allowed
+        } else {
+            $url = $select->url->out_omit_querystring();     // url without params, the anchor part not allowed
+        }
         $formattributes = array('method' => $select->method,
-                                'action' => $select->url->out_omit_querystring(),
+                                'action' => $url,
                                 'id'     => $select->formid);
         $output = html_writer::tag('form', $output, $formattributes);
 
@@ -1515,6 +1524,10 @@ class core_renderer extends renderer_base {
             //add the hidden inputs
 
             $attributes = array('type'=>'hidden', 'class'=>'ratinginput', 'name'=>'contextid', 'value'=>$rating->context->id);
+            $formstart .= html_writer::empty_tag('input', $attributes);
+
+            $attributes['name'] = 'component';
+            $attributes['value'] = $rating->settings->component;
             $formstart .= html_writer::empty_tag('input', $attributes);
 
             $attributes['name'] = 'itemid';
@@ -1970,13 +1983,18 @@ class core_renderer extends renderer_base {
         } else {
             $maxsize = get_string('maxfilesize', 'moodle', display_size($size));
         }
+        if ($options->buttonname) {
+            $buttonname = ' name="' . $options->buttonname . '"';
+        } else {
+            $buttonname = '';
+        }
         $html = <<<EOD
 <div class="filemanager-loading mdl-align" id='filepicker-loading-{$client_id}'>
 $icon_progress
 </div>
 <div id="filepicker-wrapper-{$client_id}" class="mdl-left" style="display:none">
     <div>
-        <input type="button" id="filepicker-button-{$client_id}" value="{$straddfile}" />
+        <input type="button" id="filepicker-button-{$client_id}" value="{$straddfile}"{$buttonname}/>
         <span> $maxsize </span>
     </div>
 EOD;

@@ -1441,8 +1441,8 @@ function message_search_users($courseid, $searchtext, $sort='', $exceptions='') 
 
         // everyone who has a role assignment in this course or higher
         $params = array($USER->id, "%$searchtext%");
-        $users = $DB->get_records_sql("SELECT $ufields,
-                                         FROM {user} u, mc.id as contactlistid, mc.blocked
+        $users = $DB->get_records_sql("SELECT $ufields, mc.id as contactlistid, mc.blocked
+                                         FROM {user} u
                                          JOIN {role_assignments} ra ON ra.userid = u.id
                                          LEFT JOIN {message_contacts} mc
                                               ON mc.contactid = u.id AND mc.userid = ?
@@ -1879,9 +1879,9 @@ function message_format_message($message, $format='', $keywords='', $class='othe
 
     //if supplied display small messages as fullmessage may contain boilerplate text that shouldnt appear in the messaging UI
     if (!empty($message->smallmessage)) {
-        $messagetext = format_text($message->smallmessage, FORMAT_MOODLE, $options);
+        $messagetext = format_text(s($message->smallmessage), FORMAT_MOODLE, $options);
     } else {
-        $messagetext = format_text($message->fullmessage, $message->fullmessageformat, $options);
+        $messagetext = format_text(s($message->fullmessage), $message->fullmessageformat, $options);
     }
 
     $messagetext .= message_format_contexturl($message);
@@ -1945,7 +1945,7 @@ function message_post_message($userfrom, $userto, $message, $format) {
     }
 
     $eventdata->fullmessageformat = $format;
-    $eventdata->smallmessage     = strip_tags($message);//strip just in case there are is any html that would break the popup notification
+    $eventdata->smallmessage     = $message;//store the message unfiltered. Clean up on output.
 
     $s = new stdClass();
     $s->sitename = $SITE->shortname;

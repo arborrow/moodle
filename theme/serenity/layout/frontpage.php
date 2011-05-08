@@ -2,9 +2,11 @@
 
 $hassidepre = (empty($PAGE->layout_options['noblocks']) && $PAGE->blocks->region_has_content('side-pre', $OUTPUT));
 $hassidepost = (empty($PAGE->layout_options['noblocks']) && $PAGE->blocks->region_has_content('side-post', $OUTPUT));
-	
+
 $showsidepre = ($hassidepre && !$PAGE->blocks->region_completely_docked('side-pre', $OUTPUT));
 $showsidepost = ($hassidepost && !$PAGE->blocks->region_completely_docked('side-post', $OUTPUT));
+$custommenu = $OUTPUT->custom_menu();
+$hascustommenu = (empty($PAGE->layout_options['nocustommenu']) && !empty($custommenu));
 
 $bodyclasses = array();
 if ($showsidepre && !$showsidepost) {
@@ -15,7 +17,10 @@ if ($showsidepre && !$showsidepost) {
     $bodyclasses[] = 'content-only';
 }
 if ($hassidepre || $hassidepost) {
-	$bodyclasses[] = 'background';
+    $bodyclasses[] = 'background';
+}
+if ($hascustommenu) {
+    $bodyclasses[] = 'has_custom_menu';
 }
 
 echo $OUTPUT->doctype() ?>
@@ -23,30 +28,32 @@ echo $OUTPUT->doctype() ?>
 <head>
     <title><?php echo $PAGE->title ?></title>
     <link rel="shortcut icon" href="<?php echo $OUTPUT->pix_url('favicon', 'theme')?>" />
-    <meta name="description" content="<?php echo strip_tags(format_text($SITE->summary, FORMAT_HTML)) ?>" />
+    <meta name="description" content="<?php p(strip_tags(format_text($SITE->summary, FORMAT_HTML))) ?>" />
     <?php echo $OUTPUT->standard_head_html() ?>
 </head>
-<body id="<?php echo $PAGE->bodyid ?>" class="<?php echo $PAGE->bodyclasses.' '.join(' ', $bodyclasses) ?>">
+<body id="<?php p($PAGE->bodyid) ?>" class="<?php p($PAGE->bodyclasses.' '.join(' ', $bodyclasses)) ?>">
 <?php echo $OUTPUT->standard_top_of_body_html() ?>
 
 <div id="page">
-	<div id="wrapper" class="clearfix">
-	
+    <div id="wrapper" class="clearfix">
+
 <!-- START OF HEADER -->
-   
+
     <div id="page-header" class="clearfix">
-		<div id="page-header-wrapper">
-	        <h1 class="headermain"><?php echo $PAGE->heading ?></h1>
-    	    <div class="headermenu">
-        		<?php
-	        	    echo $OUTPUT->login_info();
-    	        	echo $OUTPUT->lang_menu();
-	        	    echo $PAGE->headingmenu;
-		        ?>	    
-	    	</div>
-	    </div>
+        <div id="page-header-wrapper">
+            <h1 class="headermain"><?php echo $PAGE->heading ?></h1>
+            <div class="headermenu">
+                <?php
+                    echo $OUTPUT->login_info();
+                    echo $OUTPUT->lang_menu();
+                    echo $PAGE->headingmenu;
+                ?>
+            </div>
+        </div>
     </div>
-      	  
+<?php if ($hascustommenu) { ?>
+     <div id="custommenu"><?php echo $custommenu; ?></div>
+<?php } ?>
 <!-- END OF HEADER -->
 
 <!-- START OF CONTENT -->
@@ -55,7 +62,7 @@ echo $OUTPUT->doctype() ?>
     <div id="page-content">
         <div id="region-main-box">
             <div id="region-post-box">
-            
+
                 <div id="region-main-wrap">
                     <div id="region-main">
                         <div class="region-content">
@@ -63,7 +70,7 @@ echo $OUTPUT->doctype() ?>
                         </div>
                     </div>
                 </div>
-                
+
                 <?php if ($hassidepre) { ?>
                 <div id="region-pre" class="block-region">
                     <div class="region-content">
@@ -71,7 +78,7 @@ echo $OUTPUT->doctype() ?>
                     </div>
                 </div>
                 <?php } ?>
-                
+
                 <?php if ($hassidepost) { ?>
                 <div id="region-post" class="block-region">
                     <div class="region-content">
@@ -79,7 +86,7 @@ echo $OUTPUT->doctype() ?>
                     </div>
                 </div>
                 <?php } ?>
-                
+
             </div>
         </div>
     </div>
@@ -87,7 +94,7 @@ echo $OUTPUT->doctype() ?>
 
 <!-- END OF CONTENT -->
 
-	</div>
+    </div>
 
 <!-- START OF FOOTER -->
 

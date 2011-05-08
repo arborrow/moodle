@@ -517,7 +517,7 @@ class blog_entry {
 
             } else {
                 if (in_array($type, array('image/gif', 'image/jpeg', 'image/png'))) {    // Image attachments don't get printed as links
-                    $imagereturn .= "<br />" . $OUTPUT->pix_icon($ffurl, $filename);
+                    $imagereturn .= '<br /><img src="'.$ffurl.'" alt="" />';
                 } else {
                     $imagereturn .= html_writer::link($ffurl, $image);
                     $imagereturn .= format_text(html_writer::link($ffurl, $filename), FORMAT_HTML, array('context'=>$syscontext));
@@ -718,7 +718,7 @@ class blog_listing {
         global $DB;
 
         if (empty($this->entries)) {
-            if ($sqlarray = $this->get_entry_fetch_sql()) {
+            if ($sqlarray = $this->get_entry_fetch_sql(false, 'created DESC')) {
                 $this->entries = $DB->get_records_sql($sqlarray['sql'], $sqlarray['params'], $start, $limit);
             } else {
                 return false;
