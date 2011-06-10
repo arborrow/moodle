@@ -142,7 +142,14 @@ if (!empty($messagebody) && !$edit && !$deluser && ($preview || $send)) {
         } else if (!empty($send)) {
             $good = 1;
             foreach ($SESSION->emailto[$id] as $user) {
-                $good = $good && message_post_message($USER,$user,$messagebody,$format);
+            $patterns = array();
+            $replacement = array();
+            $patterns[]='##fullname##';
+            $replacement[]=fullname($user);
+            $patterns[]='##username##';
+            $replacement[]=$user->username;
+            $newmsg = str_ireplace($patterns,$replacement,$msg);
+            $good = $good && message_post_message($USER,$user,$newmsg,$format);
             }
             if (!empty($good)) {
                 echo $OUTPUT->heading(get_string('messagedselectedusers'));

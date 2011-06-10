@@ -30,7 +30,21 @@ if ($confirm and !empty($msg) and confirm_sesskey()) {
         //TODO we should probably support all text formats here or only FORMAT_MOODLE
         //For now bulk messaging is still using the html editor and its supplying html
         //so we have to use html format for it to be displayed correctly
-        message_post_message($USER, $user, $msg, FORMAT_HTML);
+
+            $patterns = array();
+            $replacement = array();
+            
+            //TODO: add support for first and last names - see MDL-20199
+            /* $patterns[]='##firstname##';
+            $replacement[]=fullname($user,'firstname');
+            $patterns[]='##lastname##';
+            $replacement[]=fullname($user,'lastname'); */
+            $patterns[]='##fullname##';
+            $replacement[]=fullname($user);
+            $patterns[]='##username##';
+            $replacement[]=$user->username;
+            $newmsg = str_ireplace($patterns,$replacement,$msg);
+            message_post_message($USER, $user, $newmsg, FORMAT_HTML, 'direct');
     }
     $rs->close();
     redirect($return);
