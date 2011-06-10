@@ -148,7 +148,7 @@ if (!empty($messagebody) && !$edit && !$deluser && ($preview || $send)) {
             $replacement[]=$user->firstname;
             $patterns[]='##lastname##';
             $replacement[]=$user->lastname;
-            $newmsg = str_ireplace($patterns,$replacement,$msg);
+            $newmsg = str_ireplace($patterns,$replacement,$messagebody);
             $good = $good && message_post_message($USER,$user,$newmsg,$format);
             }
             if (!empty($good)) {
