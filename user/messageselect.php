@@ -144,10 +144,10 @@ if (!empty($messagebody) && !$edit && !$deluser && ($preview || $send)) {
             foreach ($SESSION->emailto[$id] as $user) {
             $patterns = array();
             $replacement = array();
-            $patterns[]='##fullname##';
-            $replacement[]=fullname($user);
-            $patterns[]='##username##';
-            $replacement[]=$user->username;
+            $patterns[]='##firstname##';
+            $replacement[]=$user->firstname;
+            $patterns[]='##lastname##';
+            $replacement[]=$user->lastname;
             $newmsg = str_ireplace($patterns,$replacement,$msg);
             $good = $good && message_post_message($USER,$user,$newmsg,$format);
             }
