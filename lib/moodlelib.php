@@ -1794,6 +1794,7 @@ function usergetdate($time, $timezone=99) {
         $getdate['minutes'],
         $getdate['seconds']
     ) = explode('_', $datestring);
+    $getdate['mon'] = (int)$getdate['mon']; //make sure this is an integer consistent with getdate() above
 
     return $getdate;
 }
