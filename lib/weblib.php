@@ -248,7 +248,7 @@ function qualified_me() {
  *     - output the url without any get params
  *     - and output the params as hidden fields to be output within a form
  *
- * @link http://docs.moodle.org/en/Development:lib/weblib.php_moodle_url See short write up here
+ * @link http://docs.moodle.org/dev/lib/weblib.php_moodle_url See short write up here
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @package moodlecore
  */
@@ -2806,42 +2806,6 @@ function convert_tabrows_to_tree($tabrows, $selected, $inactive, $activated) {
 
     return $subtree;
 }
-
-/**
- * Returns the Moodle Docs URL in the users language
- *
- * @global object
- * @param string $path the end of the URL.
- * @return string The MoodleDocs URL in the user's language. for example {@link http://docs.moodle.org/en/ http://docs.moodle.org/en/$path}
- */
-function get_docs_url($path) {
-    global $CFG;
-    // Check that $CFG->release has been set up, during installation it won't be.
-    if (empty($CFG->release)) {
-        // It's not there yet so look at version.php
-        include($CFG->dirroot.'/version.php');
-    } else {
-        // We can use $CFG->release and avoid having to include version.php
-        $release = $CFG->release;
-    }
-    // Attempt to match the branch from the release
-    if (preg_match('/^(.)\.(.)/', $release, $matches)) {
-        // We should ALWAYS get here
-        $branch = $matches[1].$matches[2];
-    } else {
-        // We should never get here but in case we do lets set $branch to .
-        // the smart one's will know that this is the current directory
-        // and the smarter ones will know that there is some smart matching
-        // that will ensure people end up at the latest version of the docs.
-        $branch = '.';
-    }
-    if (!empty($CFG->docroot)) {
-        return $CFG->docroot . '/' . $branch . '/' . current_language() . '/' . $path;
-    } else {
-        return 'http://docs.moodle.org/'. $branch . '/en/' . $path;
-    }
-}
-
 
 /**
  * Standard Debugging Function

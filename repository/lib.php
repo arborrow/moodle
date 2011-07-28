@@ -449,7 +449,7 @@ class repository_type {
  * This is the base class of the repository class
  *
  * To use repository plugin, see:
- * http://docs.moodle.org/en/Development:Repository_How_to_Create_Plugin
+ * http://docs.moodle.org/dev/Repository_How_to_Create_Plugin
  * class repository is an abstract class, some functions must be implemented in subclass.
  * See an example: repository/boxnet/lib.php
  *
@@ -1381,7 +1381,11 @@ abstract class repository {
             $configs = call_user_func($classname . '::get_instance_option_names');
             if (!empty($configs)) {
                 foreach ($configs as $config) {
-                    $options[$config] = $params[$config];
+                    if (isset($params[$config])) {
+                        $options[$config] = $params[$config];
+                    } else {
+                        $options[$config] = null;
+                    }
                 }
             }
 
@@ -1530,7 +1534,7 @@ abstract class repository {
     /**
      * Given a path, and perhaps a search, get a list of files.
      *
-     * See details on http://docs.moodle.org/en/Development:Repository_plugins
+     * See details on http://docs.moodle.org/dev/Repository_plugins
      *
      * @param string $path, this parameter can
      * a folder name, or a identification of folder

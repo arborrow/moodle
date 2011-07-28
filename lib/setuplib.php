@@ -480,18 +480,17 @@ function get_exception_info($ex) {
     }
 
     if (!empty($CFG->errordocroot)) {
-        $errordocroot = $CFG->errordocroot;
-    } else if (!empty($CFG->docroot)) {
-        $errordocroot = $CFG->docroot;
+        $errordoclink = $CFG->errordocroot . '/en/';
     } else {
-        $errordocroot = 'http://docs.moodle.org';
+        $errordoclink = get_docs_url();
     }
+
     if ($module === 'error') {
         $modulelink = 'moodle';
     } else {
         $modulelink = $module;
     }
-    $moreinfourl = $errordocroot . '/en/error/' . $modulelink . '/' . $errorcode;
+    $moreinfourl = $errordoclink . 'error/' . $modulelink . '/' . $errorcode;
 
     if (empty($link)) {
         if (!empty($SESSION->fromurl)) {
@@ -500,6 +499,12 @@ function get_exception_info($ex) {
         } else {
             $link = $CFG->wwwroot .'/';
         }
+    }
+
+    // when printing an error the continue button should never link offsite
+    if (stripos($link, $CFG->wwwroot) === false &&
+        stripos($link, $CFG->httpswwwroot) === false) {
+        $link = $CFG->wwwroot.'/';
     }
 
     $info = new stdClass();
@@ -512,6 +517,41 @@ function get_exception_info($ex) {
     $info->debuginfo   = $debuginfo;
 
     return $info;
+}
+
+/**
+ * Returns the Moodle Docs URL in the users language
+ *
+ * @global object
+ * @param string $path the end of the URL.
+ * @return string The MoodleDocs URL in the user's language. for example {@link http://docs.moodle.org/en/ http://docs.moodle.org/en/$path}
+ */
+function get_docs_url($path=null) {
+    global $CFG;
+    // Check that $CFG->release has been set up, during installation it won't be.
+    if (empty($CFG->release)) {
+        // It's not there yet so look at version.php
+        include($CFG->dirroot.'/version.php');
+    } else {
+        // We can use $CFG->release and avoid having to include version.php
+        $release = $CFG->release;
+    }
+    // Attempt to match the branch from the release
+    if (preg_match('/^(.)\.(.)/', $release, $matches)) {
+        // We should ALWAYS get here
+        $branch = $matches[1].$matches[2];
+    } else {
+        // We should never get here but in case we do lets set $branch to .
+        // the smart one's will know that this is the current directory
+        // and the smarter ones will know that there is some smart matching
+        // that will ensure people end up at the latest version of the docs.
+        $branch = '.';
+    }
+    if (!empty($CFG->docroot)) {
+        return $CFG->docroot . '/' . $branch . '/' . current_language() . '/' . $path;
+    } else {
+        return 'http://docs.moodle.org/'. $branch . '/en/' . $path;
+    }
 }
 
 /**
@@ -667,7 +707,9 @@ function initialise_fullme() {
     // Used in load balancing scenarios.
     // Do not abuse this to try to solve lan/wan access problems!!!!!
     if (empty($CFG->reverseproxy)) {
-        if (($rurl['host'] != $wwwroot['host']) or
+        if (empty($rurl['host'])) {
+            // missing host in request header, probably not a real browser, let's ignore them
+        } else if (($rurl['host'] !== $wwwroot['host']) or
                 (!empty($wwwroot['port']) and $rurl['port'] != $wwwroot['port'])) {
             // Explain the problem and redirect them to the right URL
             if (!defined('NO_MOODLE_COOKIES')) {
@@ -679,7 +721,7 @@ function initialise_fullme() {
 
     // hopefully this will stop all those "clever" admins trying to set up moodle
     // with two different addresses in intranet and Internet
-    if (!empty($CFG->reverseproxy) && $rurl['host'] == $wwwroot['host']) {
+    if (!empty($CFG->reverseproxy) && $rurl['host'] === $wwwroot['host']) {
         print_error('reverseproxyabused', 'error');
     }
 
@@ -725,7 +767,11 @@ function initialise_fullme_cli() {
  */
 function setup_get_remote_url() {
     $rurl = array();
-    list($rurl['host']) = explode(':', $_SERVER['HTTP_HOST']);
+    if (isset($_SERVER['HTTP_HOST'])) {
+        list($rurl['host']) = explode(':', $_SERVER['HTTP_HOST']);
+    } else {
+        $rurl['host'] = null;
+    }
     $rurl['port'] = $_SERVER['SERVER_PORT'];
     $rurl['path'] = $_SERVER['SCRIPT_NAME']; // Script path without slash arguments
     $rurl['scheme'] = (empty($_SERVER['HTTPS']) or $_SERVER['HTTPS'] === 'off' or $_SERVER['HTTPS'] === 'Off' or $_SERVER['HTTPS'] === 'OFF') ? 'http' : 'https';

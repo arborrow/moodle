@@ -185,11 +185,16 @@ class completion_info {
      *   for a course-module.
      */
     public function is_enabled($cm=null) {
-        global $CFG;
+        global $CFG, $DB;
 
         // First check global completion
         if (!isset($CFG->enablecompletion) || $CFG->enablecompletion == COMPLETION_DISABLED) {
             return COMPLETION_DISABLED;
+        }
+
+        // Load data if we do not have enough
+        if (!isset($this->course->enablecompletion)) {
+            $this->course->enablecompletion = $DB->get_field('course', 'enablecompletion', array('id' => $this->course->id));
         }
 
         // Check course completion
@@ -930,13 +935,20 @@ class completion_info {
     function internal_set_data($cm, $data) {
         global $USER, $SESSION, $DB;
 
-        if ($data->id) {
-            // Has real (nonzero) id meaning that a database row exists
-            $DB->update_record('course_modules_completion', $data);
-        } else {
+        $transaction = $DB->start_delegated_transaction();
+        if (!$data->id) {
+            // Check there isn't really a row
+            $data->id = $DB->get_field('course_modules_completion', 'id',
+                    array('coursemoduleid'=>$data->coursemoduleid, 'userid'=>$data->userid));
+        }
+        if (!$data->id) {
             // Didn't exist before, needs creating
             $data->id = $DB->insert_record('course_modules_completion', $data);
+        } else {
+            // Has real (nonzero) id meaning that a database row exists, update
+            $DB->update_record('course_modules_completion', $data);
         }
+        $transaction->allow_commit();
 
         if ($data->userid == $USER->id) {
             $SESSION->completioncache[$cm->course][$cm->id] = $data;

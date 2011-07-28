@@ -273,6 +273,13 @@ define('PARAM_FORMAT',   'alphanumext');
 define('PARAM_MULTILANG',  'text');
 
 /**
+ * PARAM_TIMEZONE - expected timezone. Timezone can be int +-(0-13) or float +-(0.5-12.5) or
+ * string seperated by '/' and can have '-' &/ '_' (eg. America/North_Dakota/New_Salem
+ * America/Port-au-Prince)
+ */
+define('PARAM_TIMEZONE', 'timezone');
+
+/**
  * PARAM_CLEANFILE - deprecated alias of PARAM_FILE; originally was removing regional chars too
  */
 define('PARAM_CLEANFILE', 'file');
@@ -884,6 +891,14 @@ function clean_param($param, $type) {
                 return '';
             }
 
+        case PARAM_TIMEZONE:    //can be int, float(with .5 or .0) or string seperated by '/' and can have '-_'
+            $timezonepattern = '/^(([+-]?(0?[0-9](\.[5|0])?|1[0-3]|1[0-2]\.5))|(99)|[[:alnum:]]+(\/?[[:alpha:]_-])+)$/';
+            if (preg_match($timezonepattern, $param)) {
+                return $param;
+            } else {
+                return '';
+            }
+
         default:                 // throw error, switched parameters in optional_param or another serious problem
             print_error("unknownparamtype", '', '', $type);
     }
@@ -1172,6 +1187,10 @@ function purge_all_caches() {
 
     // make sure cache dir is writable, throws exception if not
     make_upload_directory('cache');
+
+    // hack: this script may get called after the purifier was initialised,
+    // but we do not want to verify repeatedly this exists in each call
+    make_upload_directory('cache/htmlpurifier');
 
     clearstatcache();
 }
@@ -3387,7 +3406,7 @@ function truncate_userinfo($info) {
  *
  * Any plugin that needs to purge user data should register the 'user_deleted' event.
  *
- * @param object $user User object before delete
+ * @param stdClass $user full user object before delete
  * @return boolean always true
  */
 function delete_user($user) {

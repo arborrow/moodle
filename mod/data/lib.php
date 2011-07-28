@@ -527,10 +527,10 @@ function data_generate_default_template(&$data, $template, $recordid=0, $form=fa
             $cell->attributes['class'] = 'controls';
             $table->data[] = new html_table_row(array($cell));
         } else if ($template == 'asearchtemplate') {
-            $row = new html_table_row(get_string('authorfirstname', 'data').': ', '##firstname##');
+            $row = new html_table_row(array(get_string('authorfirstname', 'data').': ', '##firstname##'));
             $row->attributes['class'] = 'searchcontrols';
             $table->data[] = $row;
-            $row = new html_table_row(get_string('authorlastname', 'data').': ', '##lastname##');
+            $row = new html_table_row(array(get_string('authorlastname', 'data').': ', '##lastname##'));
             $row->attributes['class'] = 'searchcontrols';
             $table->data[] = $row;
         }
@@ -2937,7 +2937,7 @@ function data_extend_navigation($navigation, $course, $module, $cm) {
     } else {
         $navigation->add(get_string('single', 'data'), new moodle_url('/mod/data/view.php', array('d'=>$cm->instance, 'mode'=>'single')));
     }
-    $navigation->add(get_string('search', 'data'), new moodle_url('/mod/data/view.php', array('d'=>$cm->instance, 'mode'=>'search')));
+    $navigation->add(get_string('search', 'data'), new moodle_url('/mod/data/view.php', array('d'=>$cm->instance, 'mode'=>'asearch')));
 }
 
 /**

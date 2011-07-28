@@ -1280,7 +1280,7 @@ class lesson extends lesson_base {
                 $instancename = $DB->get_field($modname, 'name', array('id' => $module->instance));
                 if ($instancename) {
                     return html_writer::link(new moodle_url('/mod/'.$modname.'/view.php', array('id'=>$this->properties->activitylink)),
-                        get_string('returnto', 'lesson', get_string('activitylinkname', 'lesson', $instancename)),
+                        get_string('activitylinkname', 'lesson', $instancename),
                         array('class'=>'centerpadded lessonbutton standardbutton'));
                 }
             }
@@ -1961,13 +1961,15 @@ abstract class lesson_page extends lesson_base {
                     $attempt->retry = $nretakes - 1; // they are going through on review, $nretakes will be too high
                 }
 
-                $DB->insert_record("lesson_attempts", $attempt);
+                if ($this->lesson->retake || (!$this->lesson->retake && $nretakes == 0)) {
+                    $DB->insert_record("lesson_attempts", $attempt);
+                }
                 // "number of attempts remaining" message if $this->lesson->maxattempts > 1
                 // displaying of message(s) is at the end of page for more ergonomic display
                 if (!$result->correctanswer && ($result->newpageid == 0)) {
                     // wrong answer and student is stuck on this page - check how many attempts
                     // the student has had at this page/question
-                    $nattempts = $DB->count_records("lesson_attempts", array("pageid"=>$this->properties->id, "userid"=>$USER->id, "retry" => $nretakes));
+                    $nattempts = $DB->count_records("lesson_attempts", array("pageid"=>$this->properties->id, "userid"=>$USER->id, "retry" => $attempt->retry));
                     // retreive the number of attempts left counter for displaying at bottom of feedback page
                     if ($nattempts >= $this->lesson->maxattempts) {
                         if ($this->lesson->maxattempts > 1) { // don't bother with message if only one attempt
