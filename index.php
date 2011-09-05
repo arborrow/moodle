@@ -199,6 +199,13 @@
                     print_courses(0);
                     echo html_writer::tag('span', '', array('class'=>'skip-block-to', 'id'=>'skipavailablecourses'));
                 }
+                // it appears that the current logic skips the site admin if there are too many courses - let's show them their courses in that case 
+                if (isloggedin() and has_capability('moodle/site:config', get_context_instance(CONTEXT_SYSTEM)) and ($DB->count_records('course') > FRONTPAGECOURSELIMIT)) {
+                    echo html_writer::tag('a', get_string('skipa', 'access', moodle_strtolower(get_string('mycourses'))), array('href'=>'#skipmycourses', 'class'=>'skip-block')
+                    echo $OUTPUT->heading(get_string('mycourses'), 2, 'headingblock header');
+                    print_my_moodle();
+                    echo html_writer::tag('span', '', array('class'=>'skip-block-to', 'id'=>'skipmycourses'));
+                } 
             break;
 
             case FRONTPAGECATEGORYNAMES:

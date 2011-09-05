@@ -2548,6 +2548,12 @@ function print_my_moodle() {
         } else {
             print_courses(0);
         }
+        // always add a course search box when displaying categories
+        echo "<table width=\"100%\"><tr><td align=\"center\">";
+        print_course_search("", false, "short");
+        echo "</td><td align=\"center\">";
+        echo $OUTPUT->single_button("$CFG->wwwroot/course/index.php", get_string("fulllistofcourses"), "get");
+        echo "</td></tr></table>\n";
     }
 }
 
