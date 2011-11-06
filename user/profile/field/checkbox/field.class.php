@@ -41,6 +41,16 @@ class profile_field_checkbox extends profile_field_base {
         $checked = intval($this->data) === 1 ? 'checked="checked"' : '';
         return '<input disabled="disabled" type="checkbox" name="'.$this->inputname.'" '.$checked.' />';
     }
+ 
+     /**
+          * Check if the field data is considered empty
+          * return boolean
+     */
+
+     function is_empty() {
+                 return ( ($this->data == '0') or empty($this->data));
+     }
+
 
 }
 

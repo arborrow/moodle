@@ -160,6 +160,8 @@ if ($hassiteconfig
                        array('description' => get_string('description'),
                              'city' => get_string('city'),
                              'country' => get_string('country'),
+                             'idnumber' => get_string('idnumber'),
+                             'address' => get_string('address'),
                              'webpage' => get_string('webpage'),
                              'icqnumber' => get_string('icqnumber'),
                              'skypeid' => get_string('skypeid'),
