@@ -146,8 +146,22 @@
         $$column = "<a href=\"user.php?sort=$column&amp;dir=$columndir\">".$string[$column]."</a>$columnicon";
     }
 
-    if ($sort == "name") {
-        $sort = "firstname";
+    $override = new object();
+    $override->firstname = 'firstname';
+    $override->lastname = 'lastname';
+    $fullnamelanguage = get_string('fullnamedisplay', '', $override);
+    if (($CFG->fullnamedisplay == 'firstname lastname') or
+        ($CFG->fullnamedisplay == 'firstname') or
+        ($CFG->fullnamedisplay == 'language' and $fullnamelanguage == 'firstname lastname' )) {
+            $fullnamedisplay = "$firstname / $lastname";
+            if ($sort == "name") { //if sort has already been set to something else then ignore
+                $sort = "firstname";
+            }
+    } else { // ($CFG->fullnamedisplay == 'language' and $fullnamelanguage == 'lastname firstname') 
+        $fullnamedisplay = "$lastname / $firstname";
+        if ($sort == "name") { //this should give the desired sorting based on fullnamedisplay (MDL-15930)
+            $sort = "lastname";
+        }
     }
 
     $extrasql = $ufiltering->get_sql_filter();
@@ -202,17 +216,6 @@
 
         $mainadmin = get_admin();
 
-        $override = new object();
-        $override->firstname = 'firstname';
-        $override->lastname = 'lastname';
-        $fullnamelanguage = get_string('fullnamedisplay', '', $override);
-        if (($CFG->fullnamedisplay == 'firstname lastname') or
-            ($CFG->fullnamedisplay == 'firstname') or
-            ($CFG->fullnamedisplay == 'language' and $fullnamelanguage == 'firstname lastname' )) {
-            $fullnamedisplay = "$firstname / $lastname";
-        } else { // ($CFG->fullnamedisplay == 'language' and $fullnamelanguage == 'lastname firstname') 
-            $fullnamedisplay = "$lastname / $firstname";
-        }
         $table->head = array ($fullnamedisplay, $email, $city, $country, $lastaccess, "", "", "");
         $table->align = array ("left", "left", "left", "left", "left", "center", "center", "center");
         $table->width = "95%";
