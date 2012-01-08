@@ -82,6 +82,7 @@ $string['missingfield'] = 'Field \"$a\" is missing';
 $string['missingrequiredfield'] = 'A required field is missing';
 $string['modulemissingcode'] = 'Module $a is missing the code needed to perform this function';
 $string['modulerequirementsnotmet'] = 'Module \"$a->modulename\" ($a->moduleversion) could not be installed.  It requires a newer version of Moodle (currently you are using $a->currentmoodle, you need $a->requiremoodle).';
+$string['mustbeloggedin'] = 'You must be logged in to do this';
 $string['mustbeteacher'] = 'You must be a teacher to view this page';
 $string['nocategorydelete'] = 'Category \'$a\' cannot be deleted!';
 $string['nocontext'] = 'Sorry, but that course is not a valid context';
