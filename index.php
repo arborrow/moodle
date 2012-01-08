@@ -197,23 +197,30 @@
                         error('Could not find or create a main news forum for the site');
                     }
 
-                    if (!empty($USER->id)) {
-                        $SESSION->fromdiscussion = $CFG->wwwroot;
-                        $subtext = '';
-                        if (forum_is_subscribed($USER->id, $newsforum)) {
-                            if (!forum_is_forcesubscribed($newsforum)) {
-                                $subtext = get_string('unsubscribe', 'forum');
-                            }
-                        } else {
-                            $subtext = get_string('subscribe', 'forum');
-                        }
-                        print_heading_block($newsforum->name);
-                        echo '<div class="subscribelink"><a href="mod/forum/subscribe.php?id='.$newsforum->id.'&amp;sesskey='.sesskey().'">'.$subtext.'</a></div>';
-                    } else {
-                        print_heading_block($newsforum->name);
-                    }
+                    if (!$cm = get_coursemodule_from_instance('forum', $newsforum->id, $newsforum->course)) {
+                        error('Course Module ID was incorrect');
+                    }                   
+ 
+                    if ($cm->visible) { //only display if the forum is visible   
 
-                    forum_print_latest_discussions($SITE, $newsforum, $SITE->newsitems, 'plain', 'p.modified DESC');
+                        if (!empty($USER->id)) {
+                            $SESSION->fromdiscussion = $CFG->wwwroot;
+                            $subtext = '';
+                            if (forum_is_subscribed($USER->id, $newsforum)) {
+                                if (!forum_is_forcesubscribed($newsforum)) {
+                                    $subtext = get_string('unsubscribe', 'forum');
+                                }
+                            } else {
+                                $subtext = get_string('subscribe', 'forum');
+                            }
+                            print_heading_block($newsforum->name);
+                            echo '<div class="subscribelink"><a href="mod/forum/subscribe.php?id='.$newsforum->id.'&amp;sesskey='.sesskey().'">'.$subtext.'</a></div>';
+                        } else {
+                            print_heading_block($newsforum->name);
+                        }
+
+                        forum_print_latest_discussions($SITE, $newsforum, $SITE->newsitems, 'plain', 'p.modified DESC');
+                    }
                 }
             break;
 
