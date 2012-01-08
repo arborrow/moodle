@@ -201,7 +201,7 @@
                         error('Course Module ID was incorrect');
                     }                   
  
-                    if (coursemodule_visible_for_user($cm,$USER->id)) { //only display if the forum is visible   
+                    if (coursemodule_visible_for_user($cm)) { //only display if the forum is visible to the current user  
 
                         if (!empty($USER->id)) {
                             $SESSION->fromdiscussion = $CFG->wwwroot;
