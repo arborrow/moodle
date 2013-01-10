@@ -306,9 +306,18 @@ class assign_plugin_manager {
     private function view_plugin_deleted($plugin) {
         global $OUTPUT;
         $this->view_header();
+        $plugindirectory=$this->subtype;
+        switch ($plugindirectory) {
+            case 'assignsubmission': 
+                $plugindirectory='submission';
+                break;
+            case 'assignfeedback':
+                $plugindirectory='feedback';
+                break;
+        }
         echo $OUTPUT->heading(get_string('deletingplugin', 'assign', get_string('pluginname', $this->subtype . '_' . $plugin)));
         echo $this->error;
-        echo $OUTPUT->notification(get_string('plugindeletefiles', 'moodle', array('name'=>get_string('pluginname', $this->subtype . '_' . $plugin), 'directory'=>('/mod/assign/' . $this->subtype . '/'.$plugin))));
+        echo $OUTPUT->notification(get_string('plugindeletefiles', 'moodle', array('name'=>get_string('pluginname', $this->subtype . '_' . $plugin), 'directory'=>('/mod/assign/' . $plugindirectory . '/'.$plugin))));
         echo $OUTPUT->continue_button($this->pageurl);
         $this->view_footer();
     }
