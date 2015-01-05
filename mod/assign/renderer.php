@@ -1077,20 +1077,20 @@ class mod_assign_renderer extends plugin_renderer_base {
      */
     public function render_assign_course_index_summary(assign_course_index_summary $indexsummary) {
         $o = '';
-
         $strplural = get_string('modulenameplural', 'assign');
         $strsectionname  = $indexsummary->courseformatname;
         $strduedate = get_string('duedate', 'assign');
         $strsubmission = get_string('submission', 'assign');
+        $strneedgrading = get_string('numberofsubmissionsneedgrading','assign');
         $strgrade = get_string('grade');
 
         $table = new html_table();
         if ($indexsummary->usesections) {
-            $table->head  = array ($strsectionname, $strplural, $strduedate, $strsubmission, $strgrade);
-            $table->align = array ('left', 'left', 'center', 'right', 'right');
+            $table->head  = array ($strsectionname, $strplural, $strduedate, $strsubmission, $strneedgrading, $strgrade);
+            $table->align = array ('left', 'left', 'center', 'right', 'right', 'right');
         } else {
-            $table->head  = array ($strplural, $strduedate, $strsubmission, $strgrade);
-            $table->align = array ('left', 'left', 'center', 'right');
+            $table->head  = array ($strplural, $strduedate, $strsubmission, $strneedgrading, $strgrade);
+            $table->align = array ('left', 'left', 'center', 'right', 'right');
         }
         $table->data = array();
 
@@ -1115,9 +1115,9 @@ class mod_assign_renderer extends plugin_renderer_base {
             }
 
             if ($indexsummary->usesections) {
-                $row = array($printsection, $link, $due, $info['submissioninfo'], $info['gradeinfo']);
+                $row = array($printsection, $link, $due, $info['submissioninfo'], $info['needgrading'], $info['gradeinfo']);
             } else {
-                $row = array($link, $due, $info['submissioninfo'], $info['gradeinfo']);
+                $row = array($link, $due, $info['submissioninfo'], $info['needgrading'], $info['gradeinfo']);
             }
             $table->data[] = $row;
         }

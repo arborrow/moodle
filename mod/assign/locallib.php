@@ -2146,7 +2146,7 @@ class assign {
 
             if (has_capability('mod/assign:grade', $context)) {
                 $submitted = $assignment->count_submissions_with_status(ASSIGN_SUBMISSION_STATUS_SUBMITTED);
-
+                $needgrading = $assignment->count_submissions_need_grading();
             } else if (has_capability('mod/assign:submit', $context)) {
                 $usersubmission = $assignment->get_user_submission($USER->id, false);
 
@@ -2164,7 +2164,7 @@ class assign {
                 $grade = '-';
             }
 
-            $courseindexsummary->add_assign_info($cm->id, $cm->name, $sectionname, $timedue, $submitted, $grade);
+            $courseindexsummary->add_assign_info($cm->id, $cm->name, $sectionname, $timedue, $submitted, $needgrading, $grade);
 
         }
 

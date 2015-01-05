@@ -708,14 +708,16 @@ class assign_course_index_summary implements renderable {
      * @param int $timedue - The due date for the assignment - may be 0 if no duedate
      * @param string $submissioninfo - A string with either the number of submitted assignments, or the
      *                                 status of the current users submission depending on capabilities.
+     * @param int $needgrading - The number of submissions that need grading
      * @param string $gradeinfo - The current users grade if they have been graded and it is not hidden.
      */
-    public function add_assign_info($cmid, $cmname, $sectionname, $timedue, $submissioninfo, $gradeinfo) {
+    public function add_assign_info($cmid, $cmname, $sectionname, $timedue, $submissioninfo, $needgrading, $gradeinfo) {
         $this->assignments[] = array('cmid'=>$cmid,
                                'cmname'=>$cmname,
                                'sectionname'=>$sectionname,
                                'timedue'=>$timedue,
                                'submissioninfo'=>$submissioninfo,
+                               'needgrading'=>$needgrading,
                                'gradeinfo'=>$gradeinfo);
     }
 
