@@ -2149,7 +2149,7 @@ class assign {
                 $needgrading = $assignment->count_submissions_need_grading();
             } else if (has_capability('mod/assign:submit', $context)) {
                 $usersubmission = $assignment->get_user_submission($USER->id, false);
-
+                $usersubmissiondate = $usersubmission->timemodified;
                 if (!empty($usersubmission->status)) {
                     $submitted = get_string('submissionstatus_' . $usersubmission->status, 'assign');
                 } else {
@@ -2160,8 +2160,16 @@ class assign {
             if (isset($gradinginfo->items[0]->grades[$USER->id]) &&
                     !$gradinginfo->items[0]->grades[$USER->id]->hidden ) {
                 $grade = $gradinginfo->items[0]->grades[$USER->id]->str_grade;
+                $dategraded = $gradinginfo->items[0]->grades[$USER->id]->dategraded;
             } else {
                 $grade = '-';
+            }
+            if (empty($needgrading)) { 
+                if ($dategraded<$usersubmissiondate) {
+                    $needgrading = get_string('yes');
+                } else {
+                    $needgrading = get_string('no');
+                }
             }
 
             $courseindexsummary->add_assign_info($cm->id, $cm->name, $sectionname, $timedue, $submitted, $needgrading, $grade);
